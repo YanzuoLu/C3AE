@@ -110,7 +110,7 @@ def test_img(params):
             predict_age.append([path, result[0], age])
             print([path, result[0], age])
     df = pd.DataFrame(predict_age, columns=[path, 'age', 'predict_age'])
-    df.to_feather('./test_result.feather')
+    df.to_feather('./mega.feather')
 
     # _, result = predict(models, img, True)
 
