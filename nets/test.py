@@ -1,10 +1,13 @@
 import sys
+sys.path.append('..')
 sys.path.append("./")
 import cv2
 import numpy as np
 import mxnet as mx
 from detect.mx_mtcnn.mtcnn_detector import MtcnnDetector
 from preproccessing.dataset_proc import gen_face, gen_boundbox
+import os
+import pandas as pd
 
 MTCNN_DETECT = MtcnnDetector(model_folder=None, ctx=mx.cpu(0), num_worker=1, minsize=50, accurate_landmark=True)
 
@@ -66,24 +69,50 @@ def predict(models, img, save_image=False):
 
         result = models.predict(tri_imgs)
         age, gender = None, None
-        if result and len(result) == 3:
-            age, _, gender = result
-            age_label, gender_label = age[-1][-1], "F" if gender[-1][0] > gender[-1][1] else "M"
-        elif result and len(result) == 2:
-            age, _  = result
-            age_label, gender_label = age[-1][-1], "unknown"
-        else:
-           raise Exception("fatal result: %s"%result)
+        try:
+            if result and len(result) == 3:
+                age, _, gender = result
+                age_label, gender_label = age[-1][-1], "F" if gender[-1][0] > gender[-1][1] else "M"
+            elif result and len(result) == 2:
+                age, _  = result
+                age_label, gender_label = age[-1][-1], "unknown"
+            else:
+                raise Exception("fatal result: %s"%result)
+        except:
+            return None, None
         cv2.putText(new_bd_img, '%s %s'%(int(age_label), gender_label), (padding + int(bounds[pidx][0]), padding + int(bounds[pidx][1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (25, 2, 175), 2)
     if save_image:
         print(result)
         cv2.imwrite("igg.jpg", new_bd_img)
     return new_bd_img, (age_label, gender_label)
 
+def load_data(root_dir='/home/FaceTest/dataset/megaage_asian/test', data_dir='/home/FaceTest/dataset/megaage_asian/list/test_name.txt', age_dir='/home/FaceTest/dataset/megaage_asian/list/test_age.txt'):
+    path, label = [], []
+    with open(data_dir, 'r') as data_file:
+        with open(age_dir, 'r') as age_file:
+            for data, age in zip(data_file.readlines(), age_file.readlines()):
+                data = data.strip()
+                age = int(age.strip())
+                data = os.path.join(root_dir, data)
+                path.append(data)
+                label.append(age)
+    return path, label
+
 def test_img(params):
-    img = cv2.imread(params.image)
+    # img = cv2.imread(params.image)
+    img_path, label = load_data()
+    predict_age = []
     models = load_branch(params)
-    predict(models, img, True)
+    for path, age in zip(img_path, label):
+        img = cv2.imread(path, cv2.IMREAD_COLOR)
+        _, result = predict(models, img, False)
+        if result:
+            predict_age.append([path, result[0], age])
+            print([path, result[0], age])
+    df = pd.DataFrame(predict_age, columns=[path, 'age', 'predict_age'])
+    df.to_feather('./test_result.feather')
+
+    # _, result = predict(models, img, True)
 
 def video(params):
     cap = cv2.VideoCapture(0)
@@ -140,19 +169,19 @@ def init_parse():
         description='C3AE retry')
 
     parser.add_argument(
-        '-g', '--with_gender', action="store_true",
+        '-g', '--with_gender', action="store_true", default=False,
         help='the best model to load')
 
     parser.add_argument(
-        '-m', '--model-path', default="./model/c3ae_model_v2_117_5.830443-0.955", type=str,
+        '-m', '--model-path', default="/home/FaceTest/document/C3AE/nets/C3AE_Mega.h5", type=str,
         help='the best model to load')
-    parser.add_argument(
-        '-vid', "--video", dest="video", action='store_true',
-        help='use cemera')
+    # parser.add_argument(
+    #     '-vid', "--video", dest="video", action='store_true',
+    #     help='use cemera')
 
-    parser.add_argument(
-        '-i', "--image", dest="image", type=str, default="./assets/timg.jpg",
-        help='use cemera')
+    # parser.add_argument(
+    #     '-i', "--image", dest="image", type=str, default="./assets/timg.jpg",
+    #     help='use cemera')
 
     parser.add_argument(
         '-se', "--se-net", dest="se_net", action='store_true',
@@ -169,9 +198,10 @@ def init_parse():
 if __name__ == "__main__":
     params = init_parse()
     #load_local_ano(params)
-    if params.video:
-        video(params)
-    else:
-        if not params.image:
-            raise Exception("no image!!")
-        test_img(params)
+    # if params.video:
+    #     video(params)
+    # else:
+    #     if not params.image:
+    #         raise Exception("no image!!")
+    #     test_img(params)
+    test_img(params)

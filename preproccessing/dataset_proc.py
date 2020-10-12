@@ -1,9 +1,10 @@
 #coding=utf-8
 import sys
 sys.path.append('..')
+sys.path.append('.')
 import argparse
 import os
-sys.path.append("./preproccessing/")
+# sys.path.append("./preproccessing/")
 import re
 import time
 from datetime import datetime
@@ -16,7 +17,7 @@ import pandas as pd
 import tensorflow as tf
 import logging
 from detect.mx_mtcnn.mtcnn_detector import MtcnnDetector
-from serilize import BaseProc
+from preproccessing.serilize import BaseProc
 from pose import get_rotation_angle
 
 '''
