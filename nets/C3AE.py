@@ -135,13 +135,13 @@ def preprocessing(dataframes, batch_size=50, category=12, interval=10, is_traini
 
 def train(params):
     from utils import reload_data
-    sample_rate, seed, batch_size, category, interval = 0.7, 2019, params.batch_size, params.category + 2, int(math.ceil(100. / params.category))
+    sample_rate, seed, batch_size, category, interval = 0.95, 2020, params.batch_size, params.category + 2, int(math.ceil(100. / params.category))
     lr = params.learning_rate
     data_dir, file_ptn = params.dataset, params.source
     dataframes = reload_data(data_dir, file_ptn)
     trainset, testset = train_test_split(dataframes, train_size=sample_rate, test_size=1-sample_rate, random_state=seed)
-    train_gen = preprocessing(trainset, dropout=params.dropout, category=category, interval=interval)
-    validation_gen = preprocessing(testset, is_training=False, category=category, interval=interval)
+    train_gen = preprocessing(trainset, dropout=params.dropout, category=category, interval=interval, batch_size=params.batch_size)
+    validation_gen = preprocessing(testset, is_training=False, category=category, interval=interval, batch_size=params.batch_size)
     print(trainset.groupby(["age"])["age"].agg("count"))
 
     print(testset.groupby(["age"]).agg(["count"]))
@@ -156,7 +156,7 @@ def train(params):
     else:
         models = build_net(category, using_SE=params.se_net, using_white_norm=params.white_norm)
     adam = Adam(lr=lr)
-    #cate_weight = K.variable(params.weight_factor)
+    # cate_weight = K.variable(params.weight_factor)
 
     models.compile(
         optimizer=adam,
@@ -169,13 +169,13 @@ def train(params):
     W2 = models.get_layer("age")
 
     print(models.summary())
-    #thres_callback = ThresCallback(cate_weight, models.get_layer("age_mean_absolute_error"), 10, 10)
+    # thres_callback = ThresCallback(cate_weight, models.get_layer("age_mean_absolute_error"), 10, 10)
 
     def get_weights(epoch, loggs):
         print(epoch, K.get_value(models.optimizer.lr), W2.get_weights())
 
     callbacks = [
-        ModelCheckpoint(params.save_path, monitor='val_age_mean_absolute_error', verbose=1, save_best_only=True, mode='min'),
+        ModelCheckpoint(params.save_path, monitor='val_age_mae', verbose=1, save_best_only=True, mode='min'),
         #TensorBoard(log_dir=params.log_dir, batch_size=batch_size, write_images=True, update_freq='epoch'),
     ]
     history = models.fit_generator(train_gen, steps_per_epoch=len(trainset) / batch_size, epochs=250, callbacks=callbacks, validation_data=validation_gen, validation_steps=len(testset) / batch_size * 3)
@@ -197,7 +197,7 @@ def init_parse():
 
     parser.add_argument(
         '--source', default="wiki", type=str,
-        choices=['wiki', 'imdb', 'wiki|imdb'],
+        choices=['wiki', 'imdb', 'wiki|imdb', 'mega'],
         help='"wiki|imdb" or regrex pattern of feather')
 
     parser.add_argument(

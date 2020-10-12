@@ -48,7 +48,7 @@ def reload_data(path_dir, file_ptn):
             dataset = pd.concat(list(frames), ignore_index=True)
     dataframe = dataset
     dataframe = dataframe[(dataframe["age"] > 0) & (dataframe["age"] < 101)]
-    dataframe = dataframe.dropna()
+    # dataframe = dataframe.dropna()
     print("---!!!!", path_dir, file_ptn, dataframe.shape)
     #dataframe = dataframe[(dataframe["yaw"] >-30) & (dataframe["yaw"] < 30) & (dataframe["roll"] >-20) & (dataframe["roll"] < 20) & (dataframe["pitch"] >-20) & (dataframe["pitch"] < 20) ]
     #return process_unbalance(dataframe)

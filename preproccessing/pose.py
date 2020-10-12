@@ -54,6 +54,7 @@ def get_rotation_angle(img, landmarks, draw=False):
     landmarks = landmarks.astype(np.float32)
     landmarks[1] = (landmarks[0] + landmarks[1]) / 2.0
     landmarks = landmarks[1:]
+    landmarks = np.ascontiguousarray(landmarks.reshape((landmarks.shape[0], 1, landmarks.shape[1])))
     size = img.shape
     model_points = np.array([
         #(-225.0, 170, -135),  #left eye
@@ -73,6 +74,7 @@ def get_rotation_angle(img, landmarks, draw=False):
          ], dtype=np.float32)
     dist_coeffs = np.zeros((4, 1))
     (success, rotation_vector, trans_vector) = cv2.solvePnP(model_points, landmarks, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_EPNP)
+    # print((success, rotation_vector, trans_vector))
     f_pitch, f_yaw, f_roll = tran_euler(rotation_vector)
 
     n_pitch = prod_trans_point((0, 0, 500.0), rotation_vector, trans_vector, camera_matrix, dist_coeffs)

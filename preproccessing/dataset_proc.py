@@ -1,6 +1,6 @@
 #coding=utf-8
 import sys
-
+sys.path.append('..')
 import argparse
 import os
 sys.path.append("./preproccessing/")
@@ -147,7 +147,7 @@ class WikiProc(ProfileProc):
         series["yaw"] = yaw
         series["pitch"] = pitch
         series["roll"] = roll
-
+        # print(series)
         return series
 
     def rectify_data(self):
@@ -165,18 +165,53 @@ class WikiProc(ProfileProc):
         logging.info(self.dataframe.groupby(["age", "gender"]).agg(["count"]))
 
 
+class MegaAge(WikiProc):
+    # https://github.com/b02901145/SSR-Net_megaage-asian
+    def __init__(self, output_dir, data_dir="", mat_file="", *args, **kwargs):
+        ProfileProc.__init__(self, "mega", data_dir, output_dir, *args, **kwargs)
+        self.mat_file = mat_file
+    
+    def read_dir(self, nums=-1):
+        name_dir = '/home/FaceTest/dataset/megaage_asian/list/train_name.txt'
+        age_dir = '/home/FaceTest/dataset/megaage_asian/list/train_age.txt'
+        root_dir = '/home/FaceTest/dataset/megaage_asian/train'
+        paths, genders, ages = [], [], []
+        face_scores, second_face_scores = [], []
+        with open(name_dir, 'r') as name_file:
+            with open(age_dir, 'r') as age_file:
+                for name, age in zip(name_file.readlines(), age_file.readlines()):
+                    name = name.strip()
+                    age = age.strip()
+                    path = os.path.join(root_dir, name)
+                    gender = np.nan
+                    age = int(age)
+                    paths.append(path)
+                    genders.append(gender)
+                    ages.append(age)
+                    face_scores.append(1.0)
+                    second_face_scores.append(np.nan)
+        return paths, genders, ages, face_scores, second_face_scores
+    
+    def _process(self, nums=-1):
+        full_path, mat_gender, mat_age, face_score, second_face_score = self.read_dir(nums)
+        mat_2_pd = pd.DataFrame({"full_path": full_path, "age": mat_age, "gender": mat_gender, "second_face_score": second_face_score, "face_score": face_score})
+        rows, cols = mat_2_pd.shape
+        frames = [self.sin_task(MTCNN_DETECT, mat_2_pd)]
+
+        self.dataframe = pd.concat(frames, ignore_index=True)
+
 class ImdbProc(WikiProc):
     # 0 for female and 1 for male
 
     def __init__(self, data_dir, output_dir, mat_file="imdb.mat", *args, **kwargs):
         ProfileProc.__init__(self, "imdb", data_dir, output_dir, *args, **kwargs)
-        self.mat_file=mat_file
+        self.mat_file = mat_file
 
 class AsiaProc(WikiProc):
     # https://github.com/JingchunCheng/All-Age-Faces-Dataset
     def __init__(self, data_dir, output_dir, mat_file="AsiaAllAge.mat", *args, **kwargs):
         ProfileProc.__init__(self, "asia", data_dir, output_dir, *args, **kwargs)
-        self.mat_file=mat_file
+        self.mat_file = mat_file
 
     def read_dir(self, nums=-1, ptn="(\d+)A(\d+).jpg"):
         paths, genders, ages = [], [], []
@@ -310,15 +345,16 @@ def init_parse():
 if __name__ == "__main__":    
     logging.basicConfig(level=logging.INFO)
     params = init_parse()
-    if params.source == "wiki":
-        WikiProc(params.input_path, params.dest, overwrite=True).process(nums=-1)
-    elif params.source == "imdb":
-        ImdbProc(params.input_path, params.dest, overwrite=True).process(nums=-1)
-    elif params.source == "asia":
-        AsiaProc(params.input_path, params.dest, overwrite=True).process(nums=-1)
-    elif params.source == "utk":
-        UTKProc(params.input_path, params.dest, overwrite=True).process(nums=-1)
-    elif params.source == "afad":
-        AFADProc(params.input_path, params.dest, extra_padding=100, overwrite=True).process(nums=-1)
-    else:
-        raise Exception("fatal source")
+    # if params.source == "wiki":
+    #     WikiProc(params.input_path, params.dest, overwrite=True).process(nums=-1)
+    # elif params.source == "imdb":
+    #     ImdbProc(params.input_path, params.dest, overwrite=True).process(nums=-1)
+    # elif params.source == "asia":
+    #     AsiaProc(params.input_path, params.dest, overwrite=True).process(nums=-1)
+    # elif params.source == "utk":
+    #     UTKProc(params.input_path, params.dest, overwrite=True).process(nums=-1)
+    # elif params.source == "afad":
+    #     AFADProc(params.input_path, params.dest, extra_padding=100, overwrite=True).process(nums=-1)
+    # else:
+    #     raise Exception("fatal source")
+    MegaAge(output_dir="/home/FaceTest/dataset/megaage_asian").process(nums=-1)
