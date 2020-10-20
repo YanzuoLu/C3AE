@@ -9,7 +9,7 @@ from preproccessing.dataset_proc import gen_face, gen_boundbox
 import os
 import pandas as pd
 
-MTCNN_DETECT = MtcnnDetector(model_folder=None, ctx=mx.cpu(0), num_worker=1, minsize=50, accurate_landmark=True)
+MTCNN_DETECT = MtcnnDetector(model_folder=None, ctx=mx.cpu(0), num_worker=8, minsize=50, accurate_landmark=True)
 
 
 def load_branch(params):
@@ -100,17 +100,39 @@ def load_data(root_dir='/home/FaceTest/dataset/megaage_asian/test', data_dir='/h
 
 def test_img(params):
     # img = cv2.imread(params.image)
-    img_path, label = load_data()
-    predict_age = []
+    # img_path, label = load_data()
+
+    data_dir = '/home/FaceTest/dataset/newfacedata_children'
+    data_list = list(os.walk(data_dir))[1:]
+
+    img_path_list = []
+    label_list = []
+    for data in data_list:
+        label = data[0].split('/')[-1]
+        for img_path in data[2]:
+            if 'jpeg' in img_path:
+                continue
+            else:
+                img_path_list.append(os.path.join(data[0], img_path))
+                label_list.append(label)
+
+    # predict_age = []
+    predict_age_list = []
     models = load_branch(params)
-    for path, age in zip(img_path, label):
-        img = cv2.imread(path, cv2.IMREAD_COLOR)
+    # for path, age in zip(img_path, label):
+    #     img = cv2.imread(path, cv2.IMREAD_COLOR)
+    #     _, result = predict(models, img, False)
+    #     if result:
+    #         predict_age.append([path, result[0], age])
+    #         print([path, result[0], age])
+    for img_path, label in zip(img_path_list, label_list):
+        img = cv2.imread(img_path, cv2.IMREAD_COLOR)
         _, result = predict(models, img, False)
         if result:
-            predict_age.append([path, result[0], age])
-            print([path, result[0], age])
-    df = pd.DataFrame(predict_age, columns=[path, 'age', 'predict_age'])
-    df.to_feather('./mega.feather')
+            predict_age_list.append([img_path, label, result[0]])
+            print([img_path, label, result[0]])
+    df = pd.DataFrame(predict_age_list, columns=['img_path', 'label', 'predict_age'])
+    df.to_feather('./newfacedata_children.feather')
 
     # _, result = predict(models, img, True)
 
@@ -173,7 +195,7 @@ def init_parse():
         help='the best model to load')
 
     parser.add_argument(
-        '-m', '--model-path', default="/home/FaceTest/document/C3AE/nets/C3AE_Mega.h5", type=str,
+        '-m', '--model-path', default="/home/FaceTest/document/C3AE/WikiImdb-Mega/C3AE_WikiImdb-Mega.h5", type=str,
         help='the best model to load')
     # parser.add_argument(
     #     '-vid', "--video", dest="video", action='store_true',
